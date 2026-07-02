@@ -122,6 +122,12 @@
       },
       "group_battery_state": {
         "name": "Gesamt-Batteriestatus"
+      },
+      "group_charge_today": {
+        "name": "Gesamt-Ladung heute"
+      },
+      "group_discharge_today": {
+        "name": "Gesamt-Entladung heute"
       }
     }
   }

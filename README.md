@@ -15,6 +15,8 @@ The integration replaces long manual MQTT sensor YAML blocks with a UI-based Con
 - Creates separated `Power from Battery` and `Power to Battery` sensors per battery.
 - Creates group sensors across all configured batteries.
 - Calculates group state of charge capacity-weighted by the configured battery capacity.
+- Sums daily charge and discharge energy into group sensors.
+- Reads daily energy counters from `system/state` and accepts alternative JSON keys. If these values arrive later than `quick/state`, the energy sensors stay unavailable until the first counter payload is received.
 - Optional power sign inversion per battery.
 - Optional diagnostics such as RSSI.
 - Includes local Home Assistant brand images in `custom_components/hoymiles_mqtt_battery/brand/`.
@@ -71,6 +73,10 @@ homeassistant/sensor/MSA-280024351071/quick/state
 }
 ```
 
+The daily energy fields are primarily read from `chg_e` and `dchg_e`. The integration also checks all incoming payloads for common aliases such as `charge_e`, `charge_today`, `discharge_e`, and `discharge_today`. This helps when a Hoymiles MQTT bridge publishes the counters in a combined payload or uses slightly different key names.
+
+If the first `quick/state` payload only contains values such as `bat_p`, `soc`, and `bat_sts`, **Charge Today** and **Discharge Today** may briefly show as unavailable. They update as soon as the later MQTT payload containing `chg_e` / `dchg_e` or one of the supported aliases arrives.
+
 ## Created sensors per battery
 
 Each configured battery gets these sensors:
@@ -79,8 +85,8 @@ Each configured battery gets these sensors:
 |---|---:|---|
 | State of Charge | % | Battery state of charge from `soc` |
 | Battery Temperature | °C | Battery temperature from `bat_temp` |
-| Charge Today | Wh | Daily charge energy from `chg_e` |
-| Discharge Today | Wh | Daily discharge energy from `dchg_e` |
+| Charge Today | Wh | Daily charge energy from MQTT counter |
+| Discharge Today | Wh | Daily discharge energy from MQTT counter |
 | Power from/to Battery | W | Signed battery power from `bat_p` |
 | Power from Battery | W | Positive discharge power only |
 | Power to Battery | W | Positive charge power only |
@@ -96,9 +102,27 @@ The integration creates one virtual group device with these sensors:
 | Total State of Charge | % | Capacity-weighted state of charge across all batteries |
 | Total Power from Battery | W | Sum of all individual `Power from Battery` sensors |
 | Total Power to Battery | W | Sum of all individual `Power to Battery` sensors |
+| Total Charge Today | Wh | Sum of all individual `Charge Today` sensors |
+| Total Discharge Today | Wh | Sum of all individual `Discharge Today` sensors |
 | Total Battery State | enum | `discharge`, `charge`, or `standby` derived from group power |
 
 There is intentionally no net power sensor because the intended setup assumes all batteries charge or discharge at the same time.
+
+## Delayed daily energy counters
+
+Some MQTT bridges publish `quick/state` first and the daily energy counters a little later. A first payload may look like this:
+
+```json
+{
+  "bat_sts": "discharge",
+  "bat_p": 20.7,
+  "soc": 56.8
+}
+```
+
+In this payload there are no fields such as `chg_e` or `dchg_e`, so **Charge Today** and **Discharge Today** stay unavailable at first. The integration keeps listening to all subscribed topics and updates the daily energy sensors as soon as a later payload contains `chg_e`, `dchg_e`, or one of the supported aliases.
+
+The group sensors **Total Charge Today** and **Total Discharge Today** sum all individual battery counters that are already available.
 
 ## Power sign convention
 

@@ -23,7 +23,10 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_BASE_TOPIC,
     DEVICE_TOPIC,
+    DOMAIN,
     GROUP_VALUE_BATTERY_STATE,
+    GROUP_VALUE_CHARGE_TODAY,
+    GROUP_VALUE_DISCHARGE_TODAY,
     GROUP_VALUE_POWER_FROM_BATTERY,
     GROUP_VALUE_POWER_TO_BATTERY,
     GROUP_VALUE_SOC,
@@ -48,6 +51,25 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Different Hoymiles MQTT bridges / firmwares sometimes use slightly different
+# keys for the daily energy counters. The official YAML examples usually use
+# chg_e and dchg_e, but accepting aliases makes the integration more tolerant.
+CHARGE_TODAY_KEYS = (
+    JSON_CHARGE_TODAY,
+    "charge_e",
+    "charge_energy",
+    "charge_today",
+    "today_chg_e",
+    "daily_chg_e",
+)
+DISCHARGE_TODAY_KEYS = (
+    JSON_DISCHARGE_TODAY,
+    "discharge_e",
+    "discharge_energy",
+    "discharge_today",
+    "today_dchg_e",
+    "daily_dchg_e",
+)
 
 class HoymilesMqttHub:
     """Subscribe to Hoymiles MQTT topics and cache current values."""
@@ -127,6 +149,10 @@ class HoymilesMqttHub:
             return self._calculate_group_power_from()
         if key == GROUP_VALUE_POWER_TO_BATTERY:
             return self._calculate_group_power_to()
+        if key == GROUP_VALUE_CHARGE_TODAY:
+            return self._calculate_group_energy(VALUE_CHARGE_TODAY)
+        if key == GROUP_VALUE_DISCHARGE_TODAY:
+            return self._calculate_group_energy(VALUE_DISCHARGE_TODAY)
         if key == GROUP_VALUE_BATTERY_STATE:
             return self._calculate_group_state()
         return None
@@ -149,21 +175,22 @@ class HoymilesMqttHub:
         return round(weighted_sum / total_capacity, 1)
 
     def _calculate_group_power_from(self) -> float | None:
-        values = [
-            self.battery_power_from(battery[CONF_SERIAL])
-            for battery in self.batteries
-        ]
+        values = [self.battery_power_from(battery[CONF_SERIAL]) for battery in self.batteries]
         known = [value for value in values if value is not None]
         if not known:
             return None
         return round(sum(known), 1)
 
     def _calculate_group_power_to(self) -> float | None:
-        values = [
-            self.battery_power_to(battery[CONF_SERIAL])
-            for battery in self.batteries
-        ]
+        values = [self.battery_power_to(battery[CONF_SERIAL]) for battery in self.batteries]
         known = [value for value in values if value is not None]
+        if not known:
+            return None
+        return round(sum(known), 1)
+
+    def _calculate_group_energy(self, value_key: str) -> float | None:
+        values = [self.battery_value(battery[CONF_SERIAL], value_key) for battery in self.batteries]
+        known = [float(value) for value in values if value is not None]
         if not known:
             return None
         return round(sum(known), 1)
@@ -238,6 +265,9 @@ class HoymilesMqttHub:
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as err:
             _LOGGER.debug("Ignoring invalid Hoymiles MQTT payload for %s: %s", serial, err)
             return
+        if not isinstance(data, dict):
+            _LOGGER.debug("Ignoring non-object Hoymiles MQTT payload for %s on %s", serial, suffix)
+            return
 
         values = self._values.setdefault(serial, {})
 
@@ -257,8 +287,25 @@ class HoymilesMqttHub:
             self._set_float(values, VALUE_RSSI, data.get(JSON_RSSI))
 
         elif suffix == SYSTEM_TOPIC:
-            self._set_float(values, VALUE_CHARGE_TODAY, data.get(JSON_CHARGE_TODAY))
-            self._set_float(values, VALUE_DISCHARGE_TODAY, data.get(JSON_DISCHARGE_TODAY))
+            if not self._set_first_float(values, VALUE_CHARGE_TODAY, data, CHARGE_TODAY_KEYS):
+                _LOGGER.debug(
+                    "No charge-today key found in Hoymiles system payload for %s. Available keys: %s",
+                    serial,
+                    sorted(data),
+                )
+            if not self._set_first_float(values, VALUE_DISCHARGE_TODAY, data, DISCHARGE_TODAY_KEYS):
+                _LOGGER.debug(
+                    "No discharge-today key found in Hoymiles system payload for %s. Available keys: %s",
+                    serial,
+                    sorted(data),
+                )
+
+        # Some MQTT bridges include the daily counters in quick/state or in a
+        # combined payload instead of system/state. Parse them from every
+        # received payload as a safe fallback. Until the first counter payload
+        # arrives, the daily energy sensors intentionally stay unavailable.
+        self._set_first_float(values, VALUE_CHARGE_TODAY, data, CHARGE_TODAY_KEYS)
+        self._set_first_float(values, VALUE_DISCHARGE_TODAY, data, DISCHARGE_TODAY_KEYS)
 
         self._notify_listeners()
 
@@ -276,3 +323,22 @@ class HoymilesMqttHub:
         number = cls._as_float(value)
         if number is not None:
             values[key] = round(number, 1)
+
+    @classmethod
+    def _set_first_float(
+        cls,
+        values: dict[str, Any],
+        key: str,
+        data: dict[str, Any],
+        candidate_keys: tuple[str, ...],
+    ) -> bool:
+        """Set the first available numeric value from a list of JSON keys."""
+        for candidate_key in candidate_keys:
+            if candidate_key not in data:
+                continue
+            number = cls._as_float(data.get(candidate_key))
+            if number is None:
+                continue
+            values[key] = round(number, 1)
+            return True
+        return False

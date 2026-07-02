@@ -13,6 +13,8 @@ Die Integration ersetzt lange manuelle MQTT-Sensor-YAML-Blöcke durch eine Einri
 - Erstellt getrennte `Power from Battery` und `Power to Battery` Sensoren pro Akku.
 - Erstellt gemeinsame Gruppensensoren über alle hinterlegten Akkus.
 - Berechnet den gemeinsamen Ladezustand kapazitätsgewichtet anhand der eingetragenen Akku-Kapazitäten.
+- Summiert die tägliche Ladung und Entladung in zusätzlichen Gruppensensoren.
+- Liest die Tagesenergie aus `system/state` und akzeptiert alternative JSON-Schlüssel. Wenn diese Werte etwas später als `quick/state` kommen, bleiben die Energie-Sensoren bis zum ersten passenden Payload kurzzeitig nicht verfügbar.
 - Optionales Invertieren des Power-Vorzeichens pro Akku.
 - Optionale Diagnose-Sensoren wie RSSI.
 - Enthält lokale Home-Assistant-Brand-Bilder unter `custom_components/hoymiles_mqtt_battery/brand/`.
@@ -69,6 +71,10 @@ homeassistant/sensor/MSA-280024351071/quick/state
 }
 ```
 
+Die Tagesenergie wird primär aus `chg_e` und `dchg_e` gelesen. Zusätzlich prüft die Integration alle eingehenden Payloads auf gängige Alternativen wie `charge_e`, `charge_today`, `discharge_e` und `discharge_today`. Das hilft, wenn eine Hoymiles-MQTT-Bridge die Werte in einem kombinierten Payload oder mit leicht anderen Schlüsseln veröffentlicht.
+
+Wenn der erste `quick/state`-Payload nur Werte wie `bat_p`, `soc` und `bat_sts` enthält, können **Ladung heute** und **Entladung heute** kurzzeitig als nicht verfügbar erscheinen. Sie aktualisieren sich, sobald der spätere MQTT-Payload mit `chg_e` / `dchg_e` oder einem unterstützten Alias eintrifft.
+
 ## Erstellte Sensoren pro Akku
 
 Jeder konfigurierte Akku bekommt diese Sensoren:
@@ -77,8 +83,8 @@ Jeder konfigurierte Akku bekommt diese Sensoren:
 |---|---:|---|
 | Ladezustand | % | Akkustand aus `soc` |
 | Batterietemperatur | °C | Batterietemperatur aus `bat_temp` |
-| Ladung heute | Wh | Tagesladung aus `chg_e` |
-| Entladung heute | Wh | Tagesentladung aus `dchg_e` |
+| Ladung heute | Wh | Tagesladung aus MQTT-Zähler |
+| Entladung heute | Wh | Tagesentladung aus MQTT-Zähler |
 | Power from/to Battery | W | Vorzeichenbehaftete Akkuleistung aus `bat_p` |
 | Entladeleistung | W | Nur positive Entladeleistung |
 | Ladeleistung | W | Nur positive Ladeleistung |
@@ -94,9 +100,27 @@ Die Integration erstellt ein virtuelles Gesamt-Gerät mit diesen Sensoren:
 | Gesamt-Ladezustand | % | Kapazitätsgewichteter Ladezustand aller Akkus |
 | Gesamt-Entladeleistung | W | Summe aller einzelnen Entladeleistungs-Sensoren |
 | Gesamt-Ladeleistung | W | Summe aller einzelnen Ladeleistungs-Sensoren |
+| Gesamt-Ladung heute | Wh | Summe aller einzelnen `Ladung heute` Sensoren |
+| Gesamt-Entladung heute | Wh | Summe aller einzelnen `Entladung heute` Sensoren |
 | Gesamt-Batteriestatus | enum | `discharge`, `charge` oder `standby`, abgeleitet aus der Gruppenleistung |
 
 Es gibt bewusst keinen Nettoleistungs-Sensor, weil diese Integration für Setups gedacht ist, bei denen alle Akkus gleichzeitig laden oder gleichzeitig entladen.
+
+## Verzögerte Tagesenergie-Zähler
+
+Manche MQTT-Bridges veröffentlichen zuerst `quick/state` und etwas später die Tagesenergie-Zähler. Ein erster Payload kann zum Beispiel so aussehen:
+
+```json
+{
+  "bat_sts": "discharge",
+  "bat_p": 20.7,
+  "soc": 56.8
+}
+```
+
+In diesem Payload gibt es noch keine Felder wie `chg_e` oder `dchg_e`. Deshalb bleiben **Ladung heute** und **Entladung heute** zunächst nicht verfügbar. Die Integration hört weiter auf alle abonnierten Topics und aktualisiert die Tagesenergie-Sensoren, sobald ein späterer Payload `chg_e`, `dchg_e` oder einen unterstützten Alias enthält.
+
+Die Gruppensensoren **Gesamt-Ladung heute** und **Gesamt-Entladung heute** summieren alle Einzelwerte, die bereits verfügbar sind.
 
 ## Power-Vorzeichen
 
