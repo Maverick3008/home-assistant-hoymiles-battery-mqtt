@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Added group sensor `Total Power from/to Battery` / `Gesamt-Power from/to Battery`.
+- The new group sensor sums all raw battery power values and keeps the sign: positive means discharge, negative means charge.
+
 ## 0.1.3
 
 - Removed software calculation of daily charge/discharge energy from `bat_p` again.

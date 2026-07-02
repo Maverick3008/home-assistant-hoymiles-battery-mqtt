@@ -128,6 +128,9 @@
       },
       "group_discharge_today": {
         "name": "Total Discharge Today"
+      },
+      "group_power_raw": {
+        "name": "Total Power from/to Battery"
       }
     }
   }

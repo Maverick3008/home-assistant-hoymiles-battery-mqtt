@@ -13,7 +13,7 @@ The integration replaces long manual MQTT sensor YAML blocks with a UI-based Con
 - Works with MQTT topics like `homeassistant/sensor/MSA-280024351071/quick/state`.
 - Creates individual sensors per battery.
 - Creates separated `Power from Battery` and `Power to Battery` sensors per battery.
-- Creates group sensors across all configured batteries.
+- Creates group sensors across all configured batteries, including signed total `Power from/to Battery`.
 - Calculates group state of charge capacity-weighted by the configured battery capacity.
 - Sums daily charge and discharge energy into group sensors.
 - Reads daily energy counters from `system/state` and accepts alternative JSON keys. If these values arrive later than `quick/state`, the energy sensors stay unavailable until the first counter payload is received.
@@ -100,13 +100,14 @@ The integration creates one virtual group device with these sensors:
 | Sensor | Unit | Description |
 |---|---:|---|
 | Total State of Charge | % | Capacity-weighted state of charge across all batteries |
+| Total Power from/to Battery | W | Signed sum of all individual `Power from/to Battery` sensors; positive = discharge, negative = charge |
 | Total Power from Battery | W | Sum of all individual `Power from Battery` sensors |
 | Total Power to Battery | W | Sum of all individual `Power to Battery` sensors |
 | Total Charge Today | Wh | Sum of all individual `Charge Today` sensors |
 | Total Discharge Today | Wh | Sum of all individual `Discharge Today` sensors |
 | Total Battery State | enum | `discharge`, `charge`, or `standby` derived from group power |
 
-There is intentionally no net power sensor because the intended setup assumes all batteries charge or discharge at the same time.
+The signed **Total Power from/to Battery** sensor is useful when one entity should show charging and discharging in a single value. Because the intended setup assumes all batteries charge or discharge at the same time, no additional separate net-power sensor is created.
 
 ## Delayed daily energy counters
 

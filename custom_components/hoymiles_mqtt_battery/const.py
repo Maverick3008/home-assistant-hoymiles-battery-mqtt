@@ -66,6 +66,7 @@ VALUE_BATTERY_STATE = "battery_state"
 VALUE_RSSI = "rssi"
 
 GROUP_VALUE_SOC = "group_soc"
+GROUP_VALUE_POWER_RAW = "group_power_raw"
 GROUP_VALUE_POWER_FROM_BATTERY = "group_power_from_battery"
 GROUP_VALUE_POWER_TO_BATTERY = "group_power_to_battery"
 GROUP_VALUE_CHARGE_TODAY = "group_charge_today"

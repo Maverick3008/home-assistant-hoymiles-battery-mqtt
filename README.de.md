@@ -11,7 +11,7 @@ Die Integration ersetzt lange manuelle MQTT-Sensor-YAML-Blöcke durch eine Einri
 - Funktioniert mit MQTT-Topics wie `homeassistant/sensor/MSA-280024351071/quick/state`.
 - Erstellt einzelne Sensoren pro Akku.
 - Erstellt getrennte `Power from Battery` und `Power to Battery` Sensoren pro Akku.
-- Erstellt gemeinsame Gruppensensoren über alle hinterlegten Akkus.
+- Erstellt gemeinsame Gruppensensoren über alle hinterlegten Akkus, inklusive vorzeichenbehafteter `Gesamt-Power from/to Battery`.
 - Berechnet den gemeinsamen Ladezustand kapazitätsgewichtet anhand der eingetragenen Akku-Kapazitäten.
 - Summiert die tägliche Ladung und Entladung in zusätzlichen Gruppensensoren.
 - Liest die Tagesenergie aus `system/state` und akzeptiert alternative JSON-Schlüssel. Wenn diese Werte etwas später als `quick/state` kommen, bleiben die Energie-Sensoren bis zum ersten passenden Payload kurzzeitig nicht verfügbar.
@@ -98,13 +98,14 @@ Die Integration erstellt ein virtuelles Gesamt-Gerät mit diesen Sensoren:
 | Sensor | Einheit | Beschreibung |
 |---|---:|---|
 | Gesamt-Ladezustand | % | Kapazitätsgewichteter Ladezustand aller Akkus |
+| Gesamt-Power from/to Battery | W | Vorzeichenbehaftete Summe aller einzelnen `Power from/to Battery` Sensoren; positiv = Entladung, negativ = Ladung |
 | Gesamt-Entladeleistung | W | Summe aller einzelnen Entladeleistungs-Sensoren |
 | Gesamt-Ladeleistung | W | Summe aller einzelnen Ladeleistungs-Sensoren |
 | Gesamt-Ladung heute | Wh | Summe aller einzelnen `Ladung heute` Sensoren |
 | Gesamt-Entladung heute | Wh | Summe aller einzelnen `Entladung heute` Sensoren |
 | Gesamt-Batteriestatus | enum | `discharge`, `charge` oder `standby`, abgeleitet aus der Gruppenleistung |
 
-Es gibt bewusst keinen Nettoleistungs-Sensor, weil diese Integration für Setups gedacht ist, bei denen alle Akkus gleichzeitig laden oder gleichzeitig entladen.
+Der vorzeichenbehaftete Sensor **Gesamt-Power from/to Battery** ist praktisch, wenn ein einzelner Wert Laden und Entladen darstellen soll. Da diese Integration für Setups gedacht ist, bei denen alle Akkus gleichzeitig laden oder gleichzeitig entladen, wird kein zusätzlicher separater Nettoleistungs-Sensor erstellt.
 
 ## Verzögerte Tagesenergie-Zähler
 

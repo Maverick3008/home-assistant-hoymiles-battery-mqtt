@@ -36,6 +36,7 @@ from .const import (
     GROUP_VALUE_BATTERY_STATE,
     GROUP_VALUE_CHARGE_TODAY,
     GROUP_VALUE_DISCHARGE_TODAY,
+    GROUP_VALUE_POWER_RAW,
     GROUP_VALUE_POWER_FROM_BATTERY,
     GROUP_VALUE_POWER_TO_BATTERY,
     GROUP_VALUE_SOC,
@@ -182,6 +183,15 @@ GROUP_SENSOR_DESCRIPTIONS: tuple[HoymilesSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:battery",
         value_fn=_group_value(GROUP_VALUE_SOC),
+    ),
+    HoymilesSensorEntityDescription(
+        key=GROUP_VALUE_POWER_RAW,
+        translation_key=GROUP_VALUE_POWER_RAW,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:battery-sync",
+        value_fn=_group_value(GROUP_VALUE_POWER_RAW),
     ),
     HoymilesSensorEntityDescription(
         key=GROUP_VALUE_POWER_FROM_BATTERY,
@@ -362,7 +372,7 @@ class HoymilesGroupSensor(HoymilesBaseSensor):
         self._attr_extra_state_attributes = {
             "battery_count": len(hub.batteries),
             "serials": [battery[CONF_SERIAL] for battery in hub.batteries],
-            "calculation": "capacity_weighted_soc_and_separated_charge_discharge_power",
+            "calculation": "capacity_weighted_soc_group_power_raw_and_separated_charge_discharge_power",
         }
 
     @property

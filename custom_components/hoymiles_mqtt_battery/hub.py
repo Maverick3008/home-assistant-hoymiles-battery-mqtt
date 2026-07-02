@@ -27,6 +27,7 @@ from .const import (
     GROUP_VALUE_BATTERY_STATE,
     GROUP_VALUE_CHARGE_TODAY,
     GROUP_VALUE_DISCHARGE_TODAY,
+    GROUP_VALUE_POWER_RAW,
     GROUP_VALUE_POWER_FROM_BATTERY,
     GROUP_VALUE_POWER_TO_BATTERY,
     GROUP_VALUE_SOC,
@@ -145,6 +146,8 @@ class HoymilesMqttHub:
         """Return one calculated group value."""
         if key == GROUP_VALUE_SOC:
             return self._calculate_group_soc()
+        if key == GROUP_VALUE_POWER_RAW:
+            return self._calculate_group_power_raw()
         if key == GROUP_VALUE_POWER_FROM_BATTERY:
             return self._calculate_group_power_from()
         if key == GROUP_VALUE_POWER_TO_BATTERY:
@@ -173,6 +176,13 @@ class HoymilesMqttHub:
         if total_capacity <= 0:
             return None
         return round(weighted_sum / total_capacity, 1)
+
+    def _calculate_group_power_raw(self) -> float | None:
+        values = [self.battery_value(battery[CONF_SERIAL], VALUE_POWER_RAW) for battery in self.batteries]
+        known = [float(value) for value in values if value is not None]
+        if not known:
+            return None
+        return round(sum(known), 1)
 
     def _calculate_group_power_from(self) -> float | None:
         values = [self.battery_power_from(battery[CONF_SERIAL]) for battery in self.batteries]
