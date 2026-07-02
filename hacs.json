@@ -1,0 +1,6 @@
+{
+  "name": "Hoymiles MQTT Battery",
+  "render_readme": true,
+  "domains": ["sensor", "mqtt"],
+  "homeassistant": "2025.1.0"
+}

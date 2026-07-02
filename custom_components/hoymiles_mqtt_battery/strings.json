@@ -1,0 +1,128 @@
+{
+  "title": "Hoymiles MQTT Battery",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hoymiles MQTT Battery",
+        "description": "Set up the MQTT base topic and the group sensors. The default base topic matches topics like homeassistant/sensor/MSA-280024351071/quick/state.",
+        "data": {
+          "base_topic": "MQTT base topic",
+          "group_name": "Group device name",
+          "create_group_sensors": "Create group sensors",
+          "create_individual_split_power": "Create separated Power from/to sensors per battery",
+          "enable_diagnostics": "Create diagnostic sensors"
+        }
+      },
+      "battery": {
+        "title": "Add battery",
+        "description": "Add one Hoymiles battery. You can enter the serial number with or without the MSA- prefix.",
+        "data": {
+          "device_name": "Battery name",
+          "serial": "Serial number",
+          "model": "Model",
+          "capacity_kwh": "Capacity",
+          "invert_power": "Invert power sign"
+        }
+      },
+      "add_more": {
+        "title": "Add another battery?",
+        "description": "Add more batteries if they should be included in the shared state of charge and shared charge/discharge power sensors.",
+        "data": {
+          "add_another": "Add another battery"
+        }
+      }
+    },
+    "error": {
+      "serial_already_added": "This serial number has already been added."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Hoymiles MQTT Battery integration entry is supported. Add more batteries from the integration options."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hoymiles MQTT Battery options",
+        "description": "Choose what you want to change.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "settings": {
+        "title": "Global settings",
+        "data": {
+          "base_topic": "MQTT base topic",
+          "group_name": "Group device name",
+          "create_group_sensors": "Create group sensors",
+          "create_individual_split_power": "Create separated Power from/to sensors per battery",
+          "enable_diagnostics": "Create diagnostic sensors"
+        }
+      },
+      "add_battery": {
+        "title": "Add battery",
+        "data": {
+          "device_name": "Battery name",
+          "serial": "Serial number",
+          "model": "Model",
+          "capacity_kwh": "Capacity",
+          "invert_power": "Invert power sign"
+        }
+      },
+      "remove_battery": {
+        "title": "Remove battery",
+        "data": {
+          "serial": "Battery"
+        }
+      }
+    },
+    "error": {
+      "serial_already_added": "This serial number has already been added."
+    },
+    "abort": {
+      "no_batteries_configured": "No batteries are configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "soc": {
+        "name": "State of Charge"
+      },
+      "battery_temperature": {
+        "name": "Battery Temperature"
+      },
+      "charge_today": {
+        "name": "Charge Today"
+      },
+      "discharge_today": {
+        "name": "Discharge Today"
+      },
+      "power_raw": {
+        "name": "Power from/to Battery"
+      },
+      "power_from_battery": {
+        "name": "Power from Battery"
+      },
+      "power_to_battery": {
+        "name": "Power to Battery"
+      },
+      "battery_state": {
+        "name": "Battery State"
+      },
+      "rssi": {
+        "name": "RSSI"
+      },
+      "group_soc": {
+        "name": "Total State of Charge"
+      },
+      "group_power_from_battery": {
+        "name": "Total Power from Battery"
+      },
+      "group_power_to_battery": {
+        "name": "Total Power to Battery"
+      },
+      "group_battery_state": {
+        "name": "Total Battery State"
+      }
+    }
+  }
+}

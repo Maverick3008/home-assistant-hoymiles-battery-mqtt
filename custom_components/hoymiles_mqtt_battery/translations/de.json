@@ -1,0 +1,128 @@
+{
+  "title": "Hoymiles MQTT Battery",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hoymiles MQTT Battery",
+        "description": "Richte das MQTT-Basis-Topic und die gemeinsamen Gruppensensoren ein. Das Standard-Topic passt zu Topics wie homeassistant/sensor/MSA-280024351071/quick/state.",
+        "data": {
+          "base_topic": "MQTT-Basis-Topic",
+          "group_name": "Name des Gesamt-Geräts",
+          "create_group_sensors": "Gruppensensoren erstellen",
+          "create_individual_split_power": "Getrennte Power-from/to-Sensoren pro Akku erstellen",
+          "enable_diagnostics": "Diagnose-Sensoren erstellen"
+        }
+      },
+      "battery": {
+        "title": "Akku hinzufügen",
+        "description": "Füge einen Hoymiles-Akku hinzu. Die Seriennummer kann mit oder ohne MSA-Präfix eingegeben werden.",
+        "data": {
+          "device_name": "Akku-Name",
+          "serial": "Seriennummer",
+          "model": "Modell",
+          "capacity_kwh": "Kapazität",
+          "invert_power": "Power-Vorzeichen invertieren"
+        }
+      },
+      "add_more": {
+        "title": "Weiteren Akku hinzufügen?",
+        "description": "Füge weitere Akkus hinzu, wenn sie in den gemeinsamen Ladezustand und die gemeinsamen Lade-/Entladeleistungs-Sensoren einfließen sollen.",
+        "data": {
+          "add_another": "Weiteren Akku hinzufügen"
+        }
+      }
+    },
+    "error": {
+      "serial_already_added": "Diese Seriennummer wurde bereits hinzugefügt."
+    },
+    "abort": {
+      "single_instance_allowed": "Es wird nur ein Hoymiles-MQTT-Battery-Eintrag unterstützt. Weitere Akkus kannst du über die Optionen hinzufügen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hoymiles MQTT Battery Optionen",
+        "description": "Wähle aus, was du ändern möchtest.",
+        "data": {
+          "action": "Aktion"
+        }
+      },
+      "settings": {
+        "title": "Globale Einstellungen",
+        "data": {
+          "base_topic": "MQTT-Basis-Topic",
+          "group_name": "Name des Gesamt-Geräts",
+          "create_group_sensors": "Gruppensensoren erstellen",
+          "create_individual_split_power": "Getrennte Power-from/to-Sensoren pro Akku erstellen",
+          "enable_diagnostics": "Diagnose-Sensoren erstellen"
+        }
+      },
+      "add_battery": {
+        "title": "Akku hinzufügen",
+        "data": {
+          "device_name": "Akku-Name",
+          "serial": "Seriennummer",
+          "model": "Modell",
+          "capacity_kwh": "Kapazität",
+          "invert_power": "Power-Vorzeichen invertieren"
+        }
+      },
+      "remove_battery": {
+        "title": "Akku entfernen",
+        "data": {
+          "serial": "Akku"
+        }
+      }
+    },
+    "error": {
+      "serial_already_added": "Diese Seriennummer wurde bereits hinzugefügt."
+    },
+    "abort": {
+      "no_batteries_configured": "Es sind keine Akkus konfiguriert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "soc": {
+        "name": "Ladezustand"
+      },
+      "battery_temperature": {
+        "name": "Batterietemperatur"
+      },
+      "charge_today": {
+        "name": "Ladung heute"
+      },
+      "discharge_today": {
+        "name": "Entladung heute"
+      },
+      "power_raw": {
+        "name": "Power from/to Battery"
+      },
+      "power_from_battery": {
+        "name": "Entladeleistung"
+      },
+      "power_to_battery": {
+        "name": "Ladeleistung"
+      },
+      "battery_state": {
+        "name": "Batteriestatus"
+      },
+      "rssi": {
+        "name": "RSSI"
+      },
+      "group_soc": {
+        "name": "Gesamt-Ladezustand"
+      },
+      "group_power_from_battery": {
+        "name": "Gesamt-Entladeleistung"
+      },
+      "group_power_to_battery": {
+        "name": "Gesamt-Ladeleistung"
+      },
+      "group_battery_state": {
+        "name": "Gesamt-Batteriestatus"
+      }
+    }
+  }
+}
