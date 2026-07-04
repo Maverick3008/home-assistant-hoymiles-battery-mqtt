@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect integration and version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          TAG_NAME="${GITHUB_REF_NAME}"
+
+          if [ ! -d "custom_components" ]; then
+            echo "❌ No custom_components directory found."
+            exit 1
+          fi
+
+          INTEGRATION_COUNT=$(find custom_components -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+
+          if [ "$INTEGRATION_COUNT" -eq 0 ]; then
+            echo "❌ No integration folder found in custom_components."
+            exit 1
+          fi
+
+          if [ "$INTEGRATION_COUNT" -eq 1 ]; then
+            INTEGRATION_DOMAIN=$(basename "$(find custom_components -mindepth 1 -maxdepth 1 -type d | head -n 1)")
+            MANIFEST="custom_components/${INTEGRATION_DOMAIN}/manifest.json"
+
+            if [ ! -f "$MANIFEST" ]; then
+              echo "❌ manifest.json not found: $MANIFEST"
+              exit 1
+            fi
+
+            MANIFEST_VERSION=$(python - <<PY
+import json
+with open('$MANIFEST', encoding='utf-8') as f:
+    print(json.load(f).get('version', ''))
+PY
+)
+
+            echo "integration_domain=$INTEGRATION_DOMAIN" >> "$GITHUB_OUTPUT"
+            echo "manifest_version=$MANIFEST_VERSION" >> "$GITHUB_OUTPUT"
+
+            if [ -n "$MANIFEST_VERSION" ] && [ "$TAG_NAME" != "v$MANIFEST_VERSION" ]; then
+              echo "⚠️ Tag $TAG_NAME does not match manifest version v$MANIFEST_VERSION."
+              echo "The release will still be created."
+            fi
+          else
+            echo "integration_domain=multiple" >> "$GITHUB_OUTPUT"
+            echo "manifest_version=" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ Multiple integration folders found. The release ZIP will include all of them."
+          fi
+
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create release ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO_NAME="${{ steps.meta.outputs.repo_name }}"
+          TAG_NAME="${{ steps.meta.outputs.tag_name }}"
+          ZIP_NAME="${REPO_NAME}-${TAG_NAME}.zip"
+
+          INCLUDE_FILES=(custom_components)
+
+          for file in README.md README.de.md hacs.json info.md LICENSE CHANGELOG.md; do
+            if [ -e "$file" ]; then
+              INCLUDE_FILES+=("$file")
+            fi
+          done
+
+          zip -r "$ZIP_NAME" "${INCLUDE_FILES[@]}" \
+            -x "*.git*" \
+            -x "*/__pycache__/*" \
+            -x "*.pyc" \
+            -x "*.pyo" \
+            -x ".pytest_cache/*" \
+            -x ".venv/*" \
+            -x "venv/*" \
+            -x ".github/*"
+
+          echo "Created $ZIP_NAME"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: "*.zip"
