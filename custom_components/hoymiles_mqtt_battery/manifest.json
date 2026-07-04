@@ -1,7 +1,7 @@
 {
   "domain": "hoymiles_mqtt_battery",
   "name": "Hoymiles MQTT Battery",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "config_flow": true,
   "documentation": "https://github.com/Maverick3008/home-assistant-hoymiles-mqtt-battery",
   "issue_tracker": "https://github.com/Maverick3008/home-assistant-hoymiles-mqtt-battery/issues",

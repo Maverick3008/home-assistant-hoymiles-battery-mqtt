@@ -372,7 +372,7 @@ class HoymilesGroupSensor(HoymilesBaseSensor):
         self._attr_extra_state_attributes = {
             "battery_count": len(hub.batteries),
             "serials": [battery[CONF_SERIAL] for battery in hub.batteries],
-            "calculation": "capacity_weighted_soc_group_power_raw_and_separated_charge_discharge_power",
+            "calculation": "capacity_weighted_soc_group_power_from_to_negative_discharge_positive_charge_and_separated_charge_discharge_power",
         }
 
     @property

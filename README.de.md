@@ -15,7 +15,7 @@ Die Integration ersetzt lange manuelle MQTT-Sensor-YAML-Blöcke durch eine Einri
 - Berechnet den gemeinsamen Ladezustand kapazitätsgewichtet anhand der eingetragenen Akku-Kapazitäten.
 - Summiert die tägliche Ladung und Entladung in zusätzlichen Gruppensensoren.
 - Liest die Tagesenergie aus `system/state` und akzeptiert alternative JSON-Schlüssel. Wenn diese Werte etwas später als `quick/state` kommen, bleiben die Energie-Sensoren bis zum ersten passenden Payload kurzzeitig nicht verfügbar.
-- Optionales Invertieren des Power-Vorzeichens pro Akku.
+- Optionales Invertieren des eingehenden MQTT-Power-Vorzeichens pro Akku, falls deine MQTT-Bridge andersherum sendet.
 - Optionale Diagnose-Sensoren wie RSSI.
 - Enthält lokale Home-Assistant-Brand-Bilder unter `custom_components/hoymiles_mqtt_battery/brand/`.
 
@@ -85,7 +85,7 @@ Jeder konfigurierte Akku bekommt diese Sensoren:
 | Batterietemperatur | °C | Batterietemperatur aus `bat_temp` |
 | Ladung heute | Wh | Tagesladung aus MQTT-Zähler |
 | Entladung heute | Wh | Tagesentladung aus MQTT-Zähler |
-| Power from/to Battery | W | Vorzeichenbehaftete Akkuleistung aus `bat_p` |
+| Power from/to Battery | W | Vorzeichenbehaftete Akkuleistung; Entladung negativ, Ladung positiv |
 | Entladeleistung | W | Nur positive Entladeleistung |
 | Ladeleistung | W | Nur positive Ladeleistung |
 | Batteriestatus | enum | Batteriestatus aus `bat_sts` |
@@ -98,7 +98,7 @@ Die Integration erstellt ein virtuelles Gesamt-Gerät mit diesen Sensoren:
 | Sensor | Einheit | Beschreibung |
 |---|---:|---|
 | Gesamt-Ladezustand | % | Kapazitätsgewichteter Ladezustand aller Akkus |
-| Gesamt-Power from/to Battery | W | Vorzeichenbehaftete Summe aller einzelnen `Power from/to Battery` Sensoren; positiv = Entladung, negativ = Ladung |
+| Gesamt-Power from/to Battery | W | Vorzeichenbehaftete Summe aller einzelnen `Power from/to Battery` Sensoren; negativ = Entladung, positiv = Ladung |
 | Gesamt-Entladeleistung | W | Summe aller einzelnen Entladeleistungs-Sensoren |
 | Gesamt-Ladeleistung | W | Summe aller einzelnen Ladeleistungs-Sensoren |
 | Gesamt-Ladung heute | Wh | Summe aller einzelnen `Ladung heute` Sensoren |
@@ -125,7 +125,7 @@ Die Gruppensensoren **Gesamt-Ladung heute** und **Gesamt-Entladung heute** summi
 
 ## Power-Vorzeichen
 
-Standardmäßig nimmt die Integration an:
+Standardmäßig nimmt die Integration für den eingehenden MQTT-Wert `bat_p` an:
 
 ```text
 bat_p > 0  = Entladung / Leistung aus Akku
@@ -133,7 +133,17 @@ bat_p < 0  = Ladung / Leistung in Akku
 bat_p = 0  = Standby
 ```
 
-Wenn deine MQTT-Werte genau andersherum sind, aktiviere beim jeweiligen Akku **Power-Vorzeichen invertieren**.
+Der sichtbare Sensor **Power from/to Battery** wird bewusst andersherum ausgegeben:
+
+```text
+Power from/to Battery < 0  = Entladung / Leistung aus Akku
+Power from/to Battery > 0  = Ladung / Leistung in Akku
+Power from/to Battery = 0  = Standby
+```
+
+Dadurch bedeutet Entladung negativ und Ladung positiv. Die getrennten Sensoren **Entladeleistung** und **Ladeleistung** bleiben weiterhin immer positive Werte.
+
+Wenn deine MQTT-Bridge `bat_p` selbst genau andersherum sendet, aktiviere beim jeweiligen Akku **MQTT-Power-Vorzeichen invertieren**.
 
 ## Berechnung des gemeinsamen Ladezustands
 

@@ -21,7 +21,7 @@
           "serial": "Serial number",
           "model": "Model",
           "capacity_kwh": "Capacity",
-          "invert_power": "Invert power sign"
+          "invert_power": "Invert MQTT power sign"
         }
       },
       "add_more": {
@@ -65,7 +65,7 @@
           "serial": "Serial number",
           "model": "Model",
           "capacity_kwh": "Capacity",
-          "invert_power": "Invert power sign"
+          "invert_power": "Invert MQTT power sign"
         }
       },
       "remove_battery": {

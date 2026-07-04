@@ -17,7 +17,7 @@ The integration replaces long manual MQTT sensor YAML blocks with a UI-based Con
 - Calculates group state of charge capacity-weighted by the configured battery capacity.
 - Sums daily charge and discharge energy into group sensors.
 - Reads daily energy counters from `system/state` and accepts alternative JSON keys. If these values arrive later than `quick/state`, the energy sensors stay unavailable until the first counter payload is received.
-- Optional power sign inversion per battery.
+- Optional inversion of the incoming MQTT power sign per battery if your MQTT bridge reports the opposite convention.
 - Optional diagnostics such as RSSI.
 - Includes local Home Assistant brand images in `custom_components/hoymiles_mqtt_battery/brand/`.
 
@@ -87,7 +87,7 @@ Each configured battery gets these sensors:
 | Battery Temperature | °C | Battery temperature from `bat_temp` |
 | Charge Today | Wh | Daily charge energy from MQTT counter |
 | Discharge Today | Wh | Daily discharge energy from MQTT counter |
-| Power from/to Battery | W | Signed battery power from `bat_p` |
+| Power from/to Battery | W | Signed battery power; negative = discharge, positive = charge |
 | Power from Battery | W | Positive discharge power only |
 | Power to Battery | W | Positive charge power only |
 | Battery State | enum | Battery state from `bat_sts` |
@@ -100,7 +100,7 @@ The integration creates one virtual group device with these sensors:
 | Sensor | Unit | Description |
 |---|---:|---|
 | Total State of Charge | % | Capacity-weighted state of charge across all batteries |
-| Total Power from/to Battery | W | Signed sum of all individual `Power from/to Battery` sensors; positive = discharge, negative = charge |
+| Total Power from/to Battery | W | Signed sum of all individual `Power from/to Battery` sensors; negative = discharge, positive = charge |
 | Total Power from Battery | W | Sum of all individual `Power from Battery` sensors |
 | Total Power to Battery | W | Sum of all individual `Power to Battery` sensors |
 | Total Charge Today | Wh | Sum of all individual `Charge Today` sensors |
@@ -127,7 +127,7 @@ The group sensors **Total Charge Today** and **Total Discharge Today** sum all i
 
 ## Power sign convention
 
-By default the integration assumes:
+By default, the integration assumes this convention for the incoming MQTT value `bat_p`:
 
 ```text
 bat_p > 0  = discharging / power from battery
@@ -135,7 +135,17 @@ bat_p < 0  = charging / power to battery
 bat_p = 0  = standby
 ```
 
-If your MQTT values use the opposite sign, enable **Invert power sign** for that battery.
+The visible **Power from/to Battery** sensor is intentionally exposed with the opposite sign:
+
+```text
+Power from/to Battery < 0  = discharging / power from battery
+Power from/to Battery > 0  = charging / power to battery
+Power from/to Battery = 0  = standby
+```
+
+This means discharge is negative and charge is positive. The separated **Power from Battery** and **Power to Battery** sensors remain positive-only values.
+
+If your MQTT bridge already reports `bat_p` with the opposite convention, enable **Invert MQTT power sign** for that battery.
 
 ## Group state of charge calculation
 

@@ -21,7 +21,7 @@
           "serial": "Seriennummer",
           "model": "Modell",
           "capacity_kwh": "Kapazität",
-          "invert_power": "Power-Vorzeichen invertieren"
+          "invert_power": "MQTT-Power-Vorzeichen invertieren"
         }
       },
       "add_more": {
@@ -65,7 +65,7 @@
           "serial": "Seriennummer",
           "model": "Modell",
           "capacity_kwh": "Kapazität",
-          "invert_power": "Power-Vorzeichen invertieren"
+          "invert_power": "MQTT-Power-Vorzeichen invertieren"
         }
       },
       "remove_battery": {

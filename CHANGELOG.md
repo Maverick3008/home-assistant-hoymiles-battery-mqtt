@@ -1,9 +1,17 @@
 # Changelog
 
+## 0.1.5
+
+- Changed the combined `Power from/to Battery` sign convention.
+- Discharge / power from battery is now negative.
+- Charge / power to battery is now positive.
+- The separated `Power from Battery` and `Power to Battery` sensors still remain positive values and continue to work correctly.
+- The group `Total Power from/to Battery` uses the same sign convention.
+
 ## 0.1.4
 
 - Added group sensor `Total Power from/to Battery` / `Gesamt-Power from/to Battery`.
-- The new group sensor sums all raw battery power values and keeps the sign: positive means discharge, negative means charge.
+- The new group sensor sums all raw battery power values. In 0.1.4 this used the original MQTT sign: positive meant discharge, negative meant charge.
 
 ## 0.1.3
 

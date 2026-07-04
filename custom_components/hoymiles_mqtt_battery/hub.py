@@ -129,18 +129,26 @@ class HoymilesMqttHub:
         return self._values.get(self.normalize_serial(serial), {}).get(key)
 
     def battery_power_from(self, serial: str) -> float | None:
-        """Return positive discharge power for one battery."""
-        power = self.battery_value(serial, VALUE_POWER_RAW)
-        if power is None:
-            return None
-        return round(max(float(power), 0.0), 1)
+        """Return positive discharge power for one battery.
 
-    def battery_power_to(self, serial: str) -> float | None:
-        """Return positive charge power for one battery."""
+        VALUE_POWER_RAW uses the user-facing sign convention:
+        negative = discharge/from battery, positive = charge/to battery.
+        """
         power = self.battery_value(serial, VALUE_POWER_RAW)
         if power is None:
             return None
         return round(abs(min(float(power), 0.0)), 1)
+
+    def battery_power_to(self, serial: str) -> float | None:
+        """Return positive charge power for one battery.
+
+        VALUE_POWER_RAW uses the user-facing sign convention:
+        negative = discharge/from battery, positive = charge/to battery.
+        """
+        power = self.battery_value(serial, VALUE_POWER_RAW)
+        if power is None:
+            return None
+        return round(max(float(power), 0.0), 1)
 
     def group_value(self, key: str) -> Any:
         """Return one calculated group value."""
@@ -285,9 +293,15 @@ class HoymilesMqttHub:
             self._set_float(values, VALUE_SOC, data.get(JSON_SOC))
             power = self._as_float(data.get(JSON_BATTERY_POWER))
             if power is not None:
+                # The Hoymiles MQTT value is normally positive while discharging
+                # and negative while charging. Internally, we first normalize to
+                # that physical convention. The user-facing combined
+                # Power from/to sensor is then inverted: negative = discharge
+                # (from battery), positive = charge (to battery).
+                physical_power = power
                 if self.battery_config(serial).get(CONF_INVERT_POWER, False):
-                    power *= -1
-                values[VALUE_POWER_RAW] = round(power, 1)
+                    physical_power *= -1
+                values[VALUE_POWER_RAW] = round(-physical_power, 1)
             state = data.get(JSON_BATTERY_STATE)
             if state is not None:
                 values[VALUE_BATTERY_STATE] = str(state)
