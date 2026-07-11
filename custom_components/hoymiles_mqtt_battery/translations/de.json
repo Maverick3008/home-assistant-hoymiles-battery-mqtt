@@ -3,83 +3,83 @@
   "config": {
     "step": {
       "user": {
-        "title": "Hoymiles MQTT Battery",
-        "description": "Richte das MQTT-Basis-Topic und die gemeinsamen Gruppensensoren ein. Das Standard-Topic passt zu Topics wie homeassistant/sensor/MSA-280024351071/quick/state.",
+        "title": "Hoymiles MQTT Batterie",
+        "description": "Richte das MQTT-Basistopic und die Gruppensensoren ein.",
         "data": {
-          "base_topic": "MQTT-Basis-Topic",
-          "group_name": "Name des Gesamt-Geräts",
+          "base_topic": "MQTT-Basistopic",
+          "group_name": "Name des Gruppengeräts",
           "create_group_sensors": "Gruppensensoren erstellen",
-          "create_individual_split_power": "Getrennte Power-from/to-Sensoren pro Akku erstellen",
-          "enable_diagnostics": "Diagnose-Sensoren erstellen"
+          "create_individual_split_power": "Getrennte Leistungs-Sensoren je Akku erstellen",
+          "enable_diagnostics": "Diagnosesensoren erstellen"
         }
       },
       "battery": {
         "title": "Akku hinzufügen",
-        "description": "Füge einen Hoymiles-Akku hinzu. Die Seriennummer kann mit oder ohne MSA-Präfix eingegeben werden.",
+        "description": "Füge einen Hoymiles-Akku hinzu. Die Seriennummer kann mit oder ohne MSA- eingegeben werden.",
         "data": {
           "device_name": "Akku-Name",
           "serial": "Seriennummer",
           "model": "Modell",
           "capacity_kwh": "Kapazität",
-          "invert_power": "MQTT-Power-Vorzeichen invertieren"
+          "invert_power": "MQTT-Leistungsvorzeichen umkehren"
         }
       },
       "add_more": {
-        "title": "Weiteren Akku hinzufügen?",
-        "description": "Füge weitere Akkus hinzu, wenn sie in den gemeinsamen Ladezustand und die gemeinsamen Lade-/Entladeleistungs-Sensoren einfließen sollen.",
+        "title": "Add another battery?",
+        "description": "Add more batteries if they should be included in the shared sensors.",
         "data": {
-          "add_another": "Weiteren Akku hinzufügen"
+          "add_another": "Add another battery"
         }
       }
     },
     "error": {
-      "serial_already_added": "Diese Seriennummer wurde bereits hinzugefügt."
+      "serial_already_added": "This serial number has already been added."
     },
     "abort": {
-      "single_instance_allowed": "Es wird nur ein Hoymiles-MQTT-Battery-Eintrag unterstützt. Weitere Akkus kannst du über die Optionen hinzufügen."
+      "single_instance_allowed": "Only one Hoymiles MQTT Battery integration entry is supported. Add more batteries from the integration options."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Hoymiles MQTT Battery Optionen",
-        "description": "Wähle aus, was du ändern möchtest.",
+        "title": "Hoymiles MQTT Battery options",
+        "description": "Choose what you want to change.",
         "data": {
-          "action": "Aktion"
+          "action": "Action"
         }
       },
       "settings": {
-        "title": "Globale Einstellungen",
+        "title": "Global settings",
         "data": {
-          "base_topic": "MQTT-Basis-Topic",
-          "group_name": "Name des Gesamt-Geräts",
-          "create_group_sensors": "Gruppensensoren erstellen",
-          "create_individual_split_power": "Getrennte Power-from/to-Sensoren pro Akku erstellen",
-          "enable_diagnostics": "Diagnose-Sensoren erstellen"
+          "base_topic": "MQTT base topic",
+          "group_name": "Group device name",
+          "create_group_sensors": "Create group sensors",
+          "create_individual_split_power": "Create separated Power from/to sensors per battery",
+          "enable_diagnostics": "Create diagnostic sensors"
         }
       },
       "add_battery": {
-        "title": "Akku hinzufügen",
+        "title": "Add battery",
         "data": {
-          "device_name": "Akku-Name",
-          "serial": "Seriennummer",
-          "model": "Modell",
-          "capacity_kwh": "Kapazität",
-          "invert_power": "MQTT-Power-Vorzeichen invertieren"
+          "device_name": "Battery name",
+          "serial": "Serial number",
+          "model": "Model",
+          "capacity_kwh": "Capacity",
+          "invert_power": "Invert MQTT power sign"
         }
       },
       "remove_battery": {
-        "title": "Akku entfernen",
+        "title": "Remove battery",
         "data": {
-          "serial": "Akku"
+          "serial": "Battery"
         }
       }
     },
     "error": {
-      "serial_already_added": "Diese Seriennummer wurde bereits hinzugefügt."
+      "serial_already_added": "This serial number has already been added."
     },
     "abort": {
-      "no_batteries_configured": "Es sind keine Akkus konfiguriert."
+      "no_batteries_configured": "No batteries are configured."
     }
   },
   "entity": {
@@ -88,7 +88,7 @@
         "name": "Ladezustand"
       },
       "battery_temperature": {
-        "name": "Batterietemperatur"
+        "name": "Akkutemperatur"
       },
       "charge_today": {
         "name": "Ladung heute"
@@ -97,40 +97,55 @@
         "name": "Entladung heute"
       },
       "power_raw": {
-        "name": "Power from/to Battery"
+        "name": "Leistung zum/vom Akku"
       },
       "power_from_battery": {
-        "name": "Entladeleistung"
+        "name": "Leistung vom Akku"
       },
       "power_to_battery": {
-        "name": "Ladeleistung"
+        "name": "Leistung zum Akku"
       },
       "battery_state": {
-        "name": "Batteriestatus"
+        "name": "Akkustatus"
       },
       "rssi": {
         "name": "RSSI"
       },
       "group_soc": {
-        "name": "Gesamt-Ladezustand"
+        "name": "Gesamter Ladezustand"
       },
       "group_power_from_battery": {
-        "name": "Gesamt-Entladeleistung"
+        "name": "Gesamtleistung vom Akku"
       },
       "group_power_to_battery": {
-        "name": "Gesamt-Ladeleistung"
+        "name": "Gesamtleistung zum Akku"
       },
       "group_battery_state": {
-        "name": "Gesamt-Batteriestatus"
+        "name": "Gesamt-Akkustatus"
       },
       "group_charge_today": {
-        "name": "Gesamt-Ladung heute"
+        "name": "Gesamte Ladung heute"
       },
       "group_discharge_today": {
-        "name": "Gesamt-Entladung heute"
+        "name": "Gesamte Entladung heute"
       },
       "group_power_raw": {
-        "name": "Gesamt-Power from/to Battery"
+        "name": "Gesamtleistung zum/vom Akku"
+      }
+    },
+    "select": {
+      "ems_mode": {
+        "name": "EMS-Modus",
+        "state": {
+          "general": "Allgemein / Eigenverbrauch",
+          "mqtt_ctrl": "MQTT-Steuerung",
+          "tou_plan": "TOU-Zeitplan"
+        }
+      }
+    },
+    "number": {
+      "power_control": {
+        "name": "Leistungssteuerung"
       }
     }
   }

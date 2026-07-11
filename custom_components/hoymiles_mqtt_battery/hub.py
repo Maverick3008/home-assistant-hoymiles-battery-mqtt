@@ -1,14 +1,15 @@
 """MQTT hub for Hoymiles MQTT Battery."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import timedelta
 import json
 import logging
 from typing import Any
 
 from homeassistant.components import mqtt
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
     BATTERY_STATE_CHARGE,
@@ -23,12 +24,13 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_BASE_TOPIC,
     DEVICE_TOPIC,
-    DOMAIN,
+    EMS_MODE_COMMAND_SUFFIX,
+    EMS_MODE_MQTT_CONTROL,
     GROUP_VALUE_BATTERY_STATE,
     GROUP_VALUE_CHARGE_TODAY,
     GROUP_VALUE_DISCHARGE_TODAY,
-    GROUP_VALUE_POWER_RAW,
     GROUP_VALUE_POWER_FROM_BATTERY,
+    GROUP_VALUE_POWER_RAW,
     GROUP_VALUE_POWER_TO_BATTERY,
     GROUP_VALUE_SOC,
     JSON_BATTERY_POWER,
@@ -36,47 +38,34 @@ from .const import (
     JSON_BATTERY_TEMP,
     JSON_CHARGE_TODAY,
     JSON_DISCHARGE_TODAY,
+    JSON_EMS_MODE,
     JSON_RSSI,
     JSON_SOC,
     MQTT_DEVICE_PREFIX,
+    POWER_CONTROL_SET_SUFFIX,
     QUICK_TOPIC,
     SYSTEM_TOPIC,
     VALUE_BATTERY_STATE,
     VALUE_BATTERY_TEMP,
     VALUE_CHARGE_TODAY,
     VALUE_DISCHARGE_TODAY,
+    VALUE_EMS_MODE,
+    VALUE_POWER_CONTROL,
     VALUE_POWER_RAW,
     VALUE_RSSI,
     VALUE_SOC,
 )
 
 _LOGGER = logging.getLogger(__name__)
+CHARGE_TODAY_KEYS = (JSON_CHARGE_TODAY, "charge_e", "charge_energy", "charge_today", "today_chg_e", "daily_chg_e")
+DISCHARGE_TODAY_KEYS = (JSON_DISCHARGE_TODAY, "discharge_e", "discharge_energy", "discharge_today", "today_dchg_e", "daily_dchg_e")
+KEEPALIVE_INTERVAL = timedelta(seconds=50)
 
-# Different Hoymiles MQTT bridges / firmwares sometimes use slightly different
-# keys for the daily energy counters. The official YAML examples usually use
-# chg_e and dchg_e, but accepting aliases makes the integration more tolerant.
-CHARGE_TODAY_KEYS = (
-    JSON_CHARGE_TODAY,
-    "charge_e",
-    "charge_energy",
-    "charge_today",
-    "today_chg_e",
-    "daily_chg_e",
-)
-DISCHARGE_TODAY_KEYS = (
-    JSON_DISCHARGE_TODAY,
-    "discharge_e",
-    "discharge_energy",
-    "discharge_today",
-    "today_dchg_e",
-    "daily_dchg_e",
-)
 
 class HoymilesMqttHub:
     """Subscribe to Hoymiles MQTT topics and cache current values."""
 
     def __init__(self, hass: HomeAssistant, config: dict[str, Any]) -> None:
-        """Initialize the hub."""
         self.hass = hass
         self.config = config
         self._listeners: list[Callable[[], None]] = []
@@ -93,152 +82,104 @@ class HoymilesMqttHub:
 
     @staticmethod
     def normalize_serial(serial: str) -> str:
-        """Normalize user-entered serial numbers for MQTT topics."""
         normalized = str(serial).strip()
         if normalized.upper().startswith(MQTT_DEVICE_PREFIX):
-            normalized = normalized[len(MQTT_DEVICE_PREFIX) :]
+            normalized = normalized[len(MQTT_DEVICE_PREFIX):]
         return normalized
 
     @property
     def batteries(self) -> list[dict[str, Any]]:
-        """Return configured batteries."""
         return list(self._battery_config_by_serial.values())
 
     def battery_config(self, serial: str) -> dict[str, Any]:
-        """Return config for one battery."""
         return self._battery_config_by_serial[self.normalize_serial(serial)]
 
     def battery_name(self, serial: str) -> str:
-        """Return display name for one battery."""
         config = self.battery_config(serial)
         return config.get(CONF_DEVICE_NAME) or f"MSA-{self.normalize_serial(serial)}"
 
     def battery_model(self, serial: str) -> str | None:
-        """Return model for one battery."""
         return self.battery_config(serial).get(CONF_MODEL)
 
     def battery_capacity_kwh(self, serial: str) -> float:
-        """Return configured capacity for one battery."""
         try:
             return float(self.battery_config(serial).get(CONF_CAPACITY_KWH, 0))
         except (TypeError, ValueError):
             return 0.0
 
     def battery_value(self, serial: str, key: str) -> Any:
-        """Return a cached value for one battery."""
         return self._values.get(self.normalize_serial(serial), {}).get(key)
 
     def battery_power_from(self, serial: str) -> float | None:
-        """Return positive discharge power for one battery.
-
-        VALUE_POWER_RAW uses the user-facing sign convention:
-        negative = discharge/from battery, positive = charge/to battery.
-        """
         power = self.battery_value(serial, VALUE_POWER_RAW)
-        if power is None:
-            return None
-        return round(abs(min(float(power), 0.0)), 1)
+        return None if power is None else round(abs(min(float(power), 0.0)), 1)
 
     def battery_power_to(self, serial: str) -> float | None:
-        """Return positive charge power for one battery.
-
-        VALUE_POWER_RAW uses the user-facing sign convention:
-        negative = discharge/from battery, positive = charge/to battery.
-        """
         power = self.battery_value(serial, VALUE_POWER_RAW)
-        if power is None:
-            return None
-        return round(max(float(power), 0.0), 1)
+        return None if power is None else round(max(float(power), 0.0), 1)
 
     def group_value(self, key: str) -> Any:
-        """Return one calculated group value."""
         if key == GROUP_VALUE_SOC:
-            return self._calculate_group_soc()
+            weighted_sum = total_capacity = 0.0
+            for battery in self.batteries:
+                serial = battery[CONF_SERIAL]
+                soc = self.battery_value(serial, VALUE_SOC)
+                capacity = self.battery_capacity_kwh(serial)
+                if soc is not None and capacity > 0:
+                    weighted_sum += float(soc) * capacity
+                    total_capacity += capacity
+            return round(weighted_sum / total_capacity, 1) if total_capacity else None
         if key == GROUP_VALUE_POWER_RAW:
-            return self._calculate_group_power_raw()
+            return self._sum_values(VALUE_POWER_RAW)
         if key == GROUP_VALUE_POWER_FROM_BATTERY:
-            return self._calculate_group_power_from()
+            values = [self.battery_power_from(b[CONF_SERIAL]) for b in self.batteries]
+            return self._sum_known(values)
         if key == GROUP_VALUE_POWER_TO_BATTERY:
-            return self._calculate_group_power_to()
+            values = [self.battery_power_to(b[CONF_SERIAL]) for b in self.batteries]
+            return self._sum_known(values)
         if key == GROUP_VALUE_CHARGE_TODAY:
-            return self._calculate_group_energy(VALUE_CHARGE_TODAY)
+            return self._sum_values(VALUE_CHARGE_TODAY)
         if key == GROUP_VALUE_DISCHARGE_TODAY:
-            return self._calculate_group_energy(VALUE_DISCHARGE_TODAY)
+            return self._sum_values(VALUE_DISCHARGE_TODAY)
         if key == GROUP_VALUE_BATTERY_STATE:
-            return self._calculate_group_state()
+            power_from = self.group_value(GROUP_VALUE_POWER_FROM_BATTERY)
+            power_to = self.group_value(GROUP_VALUE_POWER_TO_BATTERY)
+            if power_from is None and power_to is None:
+                return None
+            if power_from and power_from > 0:
+                return BATTERY_STATE_DISCHARGE
+            if power_to and power_to > 0:
+                return BATTERY_STATE_CHARGE
+            return BATTERY_STATE_STANDBY
         return None
 
-    def _calculate_group_soc(self) -> float | None:
-        weighted_sum = 0.0
-        total_capacity = 0.0
+    def _sum_values(self, key: str) -> float | None:
+        return self._sum_known([self.battery_value(b[CONF_SERIAL], key) for b in self.batteries])
 
-        for battery in self.batteries:
-            serial = battery[CONF_SERIAL]
-            soc = self.battery_value(serial, VALUE_SOC)
-            capacity = self.battery_capacity_kwh(serial)
-            if soc is None or capacity <= 0:
-                continue
-            weighted_sum += float(soc) * capacity
-            total_capacity += capacity
-
-        if total_capacity <= 0:
-            return None
-        return round(weighted_sum / total_capacity, 1)
-
-    def _calculate_group_power_raw(self) -> float | None:
-        values = [self.battery_value(battery[CONF_SERIAL], VALUE_POWER_RAW) for battery in self.batteries]
+    @staticmethod
+    def _sum_known(values: list[Any]) -> float | None:
         known = [float(value) for value in values if value is not None]
-        if not known:
-            return None
-        return round(sum(known), 1)
-
-    def _calculate_group_power_from(self) -> float | None:
-        values = [self.battery_power_from(battery[CONF_SERIAL]) for battery in self.batteries]
-        known = [value for value in values if value is not None]
-        if not known:
-            return None
-        return round(sum(known), 1)
-
-    def _calculate_group_power_to(self) -> float | None:
-        values = [self.battery_power_to(battery[CONF_SERIAL]) for battery in self.batteries]
-        known = [value for value in values if value is not None]
-        if not known:
-            return None
-        return round(sum(known), 1)
-
-    def _calculate_group_energy(self, value_key: str) -> float | None:
-        values = [self.battery_value(battery[CONF_SERIAL], value_key) for battery in self.batteries]
-        known = [float(value) for value in values if value is not None]
-        if not known:
-            return None
-        return round(sum(known), 1)
-
-    def _calculate_group_state(self) -> str | None:
-        power_from = self._calculate_group_power_from()
-        power_to = self._calculate_group_power_to()
-        if power_from is None and power_to is None:
-            return None
-        if power_from and power_from > 0:
-            return BATTERY_STATE_DISCHARGE
-        if power_to and power_to > 0:
-            return BATTERY_STATE_CHARGE
-        return BATTERY_STATE_STANDBY
+        return round(sum(known), 1) if known else None
 
     def topic(self, serial: str, suffix: str) -> str:
-        """Build the MQTT topic for a battery and suffix."""
         base_topic = str(self.config.get(CONF_BASE_TOPIC, DEFAULT_BASE_TOPIC)).strip("/")
         return f"{base_topic}/{MQTT_DEVICE_PREFIX}{self.normalize_serial(serial)}/{suffix}"
 
+    def command_topic(self, serial: str, component: str, suffix: str) -> str:
+        """Build an official Hoymiles command topic from the configured sensor base."""
+        base = str(self.config.get(CONF_BASE_TOPIC, DEFAULT_BASE_TOPIC)).strip("/")
+        root = base.rsplit("/", 1)[0] if base.endswith("/sensor") else base
+        return f"{root}/{component}/{MQTT_DEVICE_PREFIX}{self.normalize_serial(serial)}/{suffix}"
+
     async def async_start(self) -> None:
-        """Start MQTT subscriptions."""
         for battery in self.batteries:
             serial = battery[CONF_SERIAL]
             await self._subscribe(serial, QUICK_TOPIC)
             await self._subscribe(serial, DEVICE_TOPIC)
             await self._subscribe(serial, SYSTEM_TOPIC)
+        self._unsubscribers.append(async_track_time_interval(self.hass, self._async_keepalive, KEEPALIVE_INTERVAL))
 
     async def async_stop(self) -> None:
-        """Stop MQTT subscriptions."""
         for unsubscribe in self._unsubscribers:
             unsubscribe()
         self._unsubscribers.clear()
@@ -253,11 +194,46 @@ class HoymilesMqttHub:
 
         unsubscribe = await mqtt.async_subscribe(self.hass, topic, message_received, qos=0)
         self._unsubscribers.append(unsubscribe)
-        _LOGGER.debug("Subscribed to Hoymiles MQTT topic %s", topic)
+
+    async def async_set_ems_mode(self, serial: str, mode: str) -> None:
+        serial = self.normalize_serial(serial)
+        await mqtt.async_publish(
+            self.hass,
+            self.command_topic(serial, "select", EMS_MODE_COMMAND_SUFFIX),
+            mode,
+            qos=1,
+            retain=False,
+        )
+        self._values.setdefault(serial, {})[VALUE_EMS_MODE] = mode
+        self._notify_listeners()
+
+    async def async_set_power_control(self, serial: str, value: float) -> None:
+        """Set battery power. Positive discharges; negative charges, per Hoymiles."""
+        serial = self.normalize_serial(serial)
+        value = round(max(-2000.0, min(2000.0, float(value))), 1)
+        await mqtt.async_publish(
+            self.hass,
+            self.command_topic(serial, "number", POWER_CONTROL_SET_SUFFIX),
+            str(value),
+            qos=1,
+            retain=False,
+        )
+        self._values.setdefault(serial, {})[VALUE_POWER_CONTROL] = value
+        self._notify_listeners()
+
+    async def _async_keepalive(self, _now: Any) -> None:
+        """Repeat the power command before Hoymiles' one-minute timeout."""
+        for battery in self.batteries:
+            serial = battery[CONF_SERIAL]
+            values = self._values.get(serial, {})
+            if values.get(VALUE_EMS_MODE) != EMS_MODE_MQTT_CONTROL:
+                continue
+            value = values.get(VALUE_POWER_CONTROL)
+            if value is not None:
+                await self.async_set_power_control(serial, float(value))
 
     @callback
     def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
-        """Add a listener and return a function to remove it."""
         self._listeners.append(listener)
 
         @callback
@@ -274,63 +250,35 @@ class HoymilesMqttHub:
 
     @callback
     def _handle_message(self, serial: str, suffix: str, payload: str | bytes) -> None:
-        """Parse an MQTT message and update cached values."""
         serial = self.normalize_serial(serial)
         try:
             if isinstance(payload, bytes):
                 payload = payload.decode()
             data = json.loads(payload)
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as err:
-            _LOGGER.debug("Ignoring invalid Hoymiles MQTT payload for %s: %s", serial, err)
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
             return
         if not isinstance(data, dict):
-            _LOGGER.debug("Ignoring non-object Hoymiles MQTT payload for %s on %s", serial, suffix)
             return
 
         values = self._values.setdefault(serial, {})
-
         if suffix == QUICK_TOPIC:
             self._set_float(values, VALUE_SOC, data.get(JSON_SOC))
             power = self._as_float(data.get(JSON_BATTERY_POWER))
             if power is not None:
-                # The Hoymiles MQTT value is normally positive while discharging
-                # and negative while charging. Internally, we first normalize to
-                # that physical convention. The user-facing combined
-                # Power from/to sensor is then inverted: negative = discharge
-                # (from battery), positive = charge (to battery).
-                physical_power = power
-                if self.battery_config(serial).get(CONF_INVERT_POWER, False):
-                    physical_power *= -1
+                physical_power = -power if self.battery_config(serial).get(CONF_INVERT_POWER, False) else power
                 values[VALUE_POWER_RAW] = round(-physical_power, 1)
-            state = data.get(JSON_BATTERY_STATE)
-            if state is not None:
-                values[VALUE_BATTERY_STATE] = str(state)
-
+            if data.get(JSON_BATTERY_STATE) is not None:
+                values[VALUE_BATTERY_STATE] = str(data[JSON_BATTERY_STATE])
         elif suffix == DEVICE_TOPIC:
             self._set_float(values, VALUE_BATTERY_TEMP, data.get(JSON_BATTERY_TEMP))
             self._set_float(values, VALUE_RSSI, data.get(JSON_RSSI))
-
         elif suffix == SYSTEM_TOPIC:
-            if not self._set_first_float(values, VALUE_CHARGE_TODAY, data, CHARGE_TODAY_KEYS):
-                _LOGGER.debug(
-                    "No charge-today key found in Hoymiles system payload for %s. Available keys: %s",
-                    serial,
-                    sorted(data),
-                )
-            if not self._set_first_float(values, VALUE_DISCHARGE_TODAY, data, DISCHARGE_TODAY_KEYS):
-                _LOGGER.debug(
-                    "No discharge-today key found in Hoymiles system payload for %s. Available keys: %s",
-                    serial,
-                    sorted(data),
-                )
+            mode = data.get(JSON_EMS_MODE)
+            if mode is not None:
+                values[VALUE_EMS_MODE] = str(mode)
 
-        # Some MQTT bridges include the daily counters in quick/state or in a
-        # combined payload instead of system/state. Parse them from every
-        # received payload as a safe fallback. Until the first counter payload
-        # arrives, the daily energy sensors intentionally stay unavailable.
         self._set_first_float(values, VALUE_CHARGE_TODAY, data, CHARGE_TODAY_KEYS)
         self._set_first_float(values, VALUE_DISCHARGE_TODAY, data, DISCHARGE_TODAY_KEYS)
-
         self._notify_listeners()
 
     @staticmethod
@@ -349,20 +297,10 @@ class HoymilesMqttHub:
             values[key] = round(number, 1)
 
     @classmethod
-    def _set_first_float(
-        cls,
-        values: dict[str, Any],
-        key: str,
-        data: dict[str, Any],
-        candidate_keys: tuple[str, ...],
-    ) -> bool:
-        """Set the first available numeric value from a list of JSON keys."""
-        for candidate_key in candidate_keys:
-            if candidate_key not in data:
-                continue
-            number = cls._as_float(data.get(candidate_key))
-            if number is None:
-                continue
-            values[key] = round(number, 1)
-            return True
+    def _set_first_float(cls, values: dict[str, Any], key: str, data: dict[str, Any], keys: tuple[str, ...]) -> bool:
+        for candidate in keys:
+            number = cls._as_float(data.get(candidate))
+            if number is not None:
+                values[key] = round(number, 1)
+                return True
         return False

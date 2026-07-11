@@ -26,7 +26,7 @@
       },
       "add_more": {
         "title": "Add another battery?",
-        "description": "Add more batteries if they should be included in the shared state of charge and shared charge/discharge power sensors.",
+        "description": "Add more batteries if they should be included in the shared sensors.",
         "data": {
           "add_another": "Add another battery"
         }
@@ -131,6 +131,21 @@
       },
       "group_power_raw": {
         "name": "Total Power from/to Battery"
+      }
+    },
+    "select": {
+      "ems_mode": {
+        "name": "EMS Mode",
+        "state": {
+          "general": "General / self-consumption",
+          "mqtt_ctrl": "MQTT control",
+          "tou_plan": "TOU plan"
+        }
+      }
+    },
+    "number": {
+      "power_control": {
+        "name": "Power control"
       }
     }
   }

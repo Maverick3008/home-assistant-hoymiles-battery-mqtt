@@ -1,9 +1,8 @@
 """Constants for the Hoymiles MQTT Battery integration."""
-
 from __future__ import annotations
 
 DOMAIN = "hoymiles_mqtt_battery"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "select", "number"]
 
 CONF_BASE_TOPIC = "base_topic"
 CONF_BATTERIES = "batteries"
@@ -34,19 +33,21 @@ MQTT_DEVICE_PREFIX = "MSA-"
 QUICK_TOPIC = "quick/state"
 DEVICE_TOPIC = "device/state"
 SYSTEM_TOPIC = "system/state"
+EMS_MODE_COMMAND_SUFFIX = "ems_mode/command"
+POWER_CONTROL_SET_SUFFIX = "power_ctrl/set"
 
 DATA_HUB = "hub"
 
 BATTERY_STATE_CHARGE = "charge"
 BATTERY_STATE_DISCHARGE = "discharge"
 BATTERY_STATE_STANDBY = "standby"
-BATTERY_STATES = [
-    BATTERY_STATE_DISCHARGE,
-    BATTERY_STATE_CHARGE,
-    BATTERY_STATE_STANDBY,
-]
+BATTERY_STATES = [BATTERY_STATE_DISCHARGE, BATTERY_STATE_CHARGE, BATTERY_STATE_STANDBY]
 
-# MQTT JSON keys used by Hoymiles MS-A2 / HiBattery AC messages.
+EMS_MODE_GENERAL = "general"
+EMS_MODE_MQTT_CONTROL = "mqtt_ctrl"
+EMS_MODE_TOU_PLAN = "tou_plan"
+EMS_MODES = [EMS_MODE_GENERAL, EMS_MODE_MQTT_CONTROL, EMS_MODE_TOU_PLAN]
+
 JSON_SOC = "soc"
 JSON_BATTERY_TEMP = "bat_temp"
 JSON_CHARGE_TODAY = "chg_e"
@@ -54,6 +55,7 @@ JSON_DISCHARGE_TODAY = "dchg_e"
 JSON_BATTERY_POWER = "bat_p"
 JSON_RSSI = "rssi"
 JSON_BATTERY_STATE = "bat_sts"
+JSON_EMS_MODE = "ems_mode"
 
 VALUE_SOC = "soc"
 VALUE_BATTERY_TEMP = "battery_temperature"
@@ -64,6 +66,8 @@ VALUE_POWER_FROM_BATTERY = "power_from_battery"
 VALUE_POWER_TO_BATTERY = "power_to_battery"
 VALUE_BATTERY_STATE = "battery_state"
 VALUE_RSSI = "rssi"
+VALUE_EMS_MODE = "ems_mode"
+VALUE_POWER_CONTROL = "power_control"
 
 GROUP_VALUE_SOC = "group_soc"
 GROUP_VALUE_POWER_RAW = "group_power_raw"

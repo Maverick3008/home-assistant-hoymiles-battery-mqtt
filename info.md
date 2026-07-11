@@ -1,5 +1,3 @@
-# Hoymiles MQTT Battery
+# Hoymiles MQTT Battery 0.2.0
 
-Custom Home Assistant integration for Hoymiles MS-A2 and HiBattery AC MQTT battery data.
-
-It creates clean battery sensors from existing MQTT topics and adds group sensors for multiple batteries, including combined state of charge, signed Power from/to Battery with negative discharge and positive charge, charge power, discharge power, daily charge energy, and daily discharge energy. Daily energy values are read from MQTT counters such as `chg_e` and `dchg_e` and may appear shortly after the first `quick/state` payload.
+Adds per-battery EMS mode selection and MQTT charge/discharge power control. The integration retains the existing individual and combined monitoring sensors. Control entities are only created for individual batteries.
